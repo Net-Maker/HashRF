@@ -205,7 +205,7 @@ class MLPRender_PE_Res(torch.nn.Module): # position(x,y) -> positional encodding
     def __init__(self, inChanel, output_channel=16, pospe=6, featureC=128):
         super(MLPRender_PE_Res, self).__init__()
 
-        self.in_mlpC =  (2+2*pospe*2+16) #(x,y) + positional encoding + ngp_feature
+        self.in_mlpC =  (2*pospe*2+inChanel) #(x,y) + positional encoding + ngp_feature
         self.pospe = pospe
         layer1 = torch.nn.Linear(self.in_mlpC, featureC)
         layer2 = torch.nn.Linear(featureC, featureC)
@@ -230,25 +230,25 @@ class TensorVMSplit(TensorBase):
     def __init__(self, aabb, gridSize, device, **kargs):
         
         self.ngp_density_encoding_config1 = { #xy
-            "n_levels": 16,
+            "n_levels": 1,
             "otype": "HashGrid",
-            "n_features_per_level": 2,
-            "base_resolution": 16,
-            "log2_hashmap_size": 19,
+            "n_features_per_level": 16,
+            "base_resolution": 300,
+            "log2_hashmap_size": 17,
         }
         self.ngp_density_encoding_config2 = { #xz
-            "n_levels": 16,
+            "n_levels": 1,
             "otype": "HashGrid",
-            "n_features_per_level": 2,
-            "base_resolution": 16,
-            "log2_hashmap_size": 19,
+            "n_features_per_level": 16,
+            "base_resolution": 300,
+            "log2_hashmap_size": 17,
         }
         self.ngp_density_encoding_config3 = { #yz
-            "n_levels": 16,
+            "n_levels": 1,
             "otype": "HashGrid",
-            "n_features_per_level": 2,
-            "base_resolution": 16,
-            "log2_hashmap_size": 19,
+            "n_features_per_level": 16,
+            "base_resolution": 300,
+            "log2_hashmap_size": 17,
         }
         self.newwork_config = {
             "otype": "FullyFusedMLP",
@@ -262,8 +262,8 @@ class TensorVMSplit(TensorBase):
         self.feature_num1 = self.ngp_density_encoding_config1["n_levels"] * self.ngp_density_encoding_config1["n_features_per_level"]
         self.feature_num2 = self.ngp_density_encoding_config2["n_levels"] * self.ngp_density_encoding_config2["n_features_per_level"]
         self.feature_num3 = self.ngp_density_encoding_config3["n_levels"] * self.ngp_density_encoding_config3["n_features_per_level"]
-        self.density_network = [MLPRender(self.feature_num1,16).to(device),MLPRender(self.feature_num2,16).to(device),MLPRender(self.feature_num3,16).to(device)]
-        self.extra_mlp = [MLPRender_PE_Res(2+16,16).to(device),MLPRender_PE_Res(2+16,16).to(device),MLPRender_PE_Res(2+16,16).to(device)]
+        #self.density_network = [MLPRender(self.feature_num1,16).to(device),MLPRender(self.feature_num2,16).to(device),MLPRender(self.feature_num3,16).to(device)]
+        self.extra_mlp = [MLPRender_PE_Res(2+self.feature_num1,16).to(device),MLPRender_PE_Res(2+self.feature_num1,16).to(device),MLPRender_PE_Res(2+self.feature_num1,16).to(device)]
         #_,self.ngp_line = self.init_one_svd([feature_num,feature_num,feature_num], self.gridSize, 0.1, device)
         super(TensorVMSplit, self).__init__(aabb, gridSize, device, **kargs)
         
@@ -289,17 +289,18 @@ class TensorVMSplit(TensorBase):
 
     def get_optparam_groups(self, lr_init_spatialxyz = 0.02, lr_init_network = 0.001):
         grad_vars = [{'params': self.density_line, 'lr': lr_init_spatialxyz},
-                     {'params': self.app_line, 'lr': lr_init_spatialxyz}, {'params': self.app_plane, 'lr': lr_init_spatialxyz},
+                     {'params': self.app_line, 'lr': lr_init_spatialxyz}, 
+                     {'params': self.app_plane, 'lr': lr_init_spatialxyz},
                          {'params': self.basis_mat.parameters(), 'lr':lr_init_network},
                          {"params":self.ngp_density_encoding[0].parameters(),"lr":lr_init_spatialxyz},
                          {"params":self.ngp_density_encoding[1].parameters(),"lr":lr_init_spatialxyz},
                          {"params":self.ngp_density_encoding[2].parameters(),"lr":lr_init_spatialxyz},
-                         {"params":self.density_network[0].parameters(),"lr":0.001},
-                         {"params":self.density_network[1].parameters(),"lr":0.001},
-                         {"params":self.density_network[2].parameters(),"lr":0.001},
-                        #  {"params":self.extra_mlp[0].parameters(),"lr":0.01},
-                        #  {"params":self.extra_mlp[1].parameters(),"lr":0.01},
-                        #  {"params":self.extra_mlp[2].parameters(),"lr":0.01}
+                        #  {"params":self.density_network[0].parameters(),"lr":0.001},
+                        #  {"params":self.density_network[1].parameters(),"lr":0.001},
+                        #  {"params":self.density_network[2].parameters(),"lr":0.001},
+                        #  {"params":self.extra_mlp[0].parameters(),"lr":0.001},
+                        #  {"params":self.extra_mlp[1].parameters(),"lr":0.001},
+                        #  {"params":self.extra_mlp[2].parameters(),"lr":0.001}
                     ]
         if isinstance(self.renderModule, torch.nn.Module):
             grad_vars += [{'params':self.renderModule.parameters(), 'lr':lr_init_network}]
@@ -329,7 +330,7 @@ class TensorVMSplit(TensorBase):
     def TV_loss_density(self, reg):
         total = 0
         for idx in range(len(self.density_plane)):
-            total = total + reg(self.density_plane[idx]) * 1e-2 #+ reg(self.density_line[idx]) * 1e-3
+            total = total + reg(self.ngp_density_encoding[idx].params) * 1e-2 #+ reg(self.density_line[idx]) * 1e-3
         return total
         
     def TV_loss_app(self, reg):
@@ -361,8 +362,8 @@ class TensorVMSplit(TensorBase):
             normed_coordinate = (coordinate_plane[[idx_plane]].view(-1, 2) + 1)/2 # normalized from [-1,1] to [0,1]
             # normed_coordinate = coordinate_plane[[idx_plane]].view(-1, 2)
             ngp_out = self.ngp_density_encoding[idx_plane](normed_coordinate) # [N,16]
-            ngp_out = self.density_network[idx_plane](ngp_out)
-            #ngp_out += self.extra_mlp[idx_plane](normed_coordinate,ngp_out)
+            #ngp_out = self.density_network[idx_plane](ngp_out)
+            ngp_out = self.extra_mlp[idx_plane](normed_coordinate,ngp_out)
             #Each plane needs a unique hashtable to store its feature!!!
             #print(ngp_out.shape,ngp_line_point.shape)
             ngp_feature = ngp_feature + torch.sum(ngp_out.T * ngp_line_point,dim=0)
