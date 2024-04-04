@@ -6,3 +6,5 @@ log/
 data/
 *.mp4
 *.out
+*.pyc
+*.png

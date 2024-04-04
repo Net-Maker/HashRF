@@ -270,7 +270,7 @@ def reconstruction(args):
                 lr_scale = 1 #0.1 ** (iteration / args.n_iters)
             else:
                 lr_scale = args.lr_decay_target_ratio ** (iteration / args.n_iters)
-            grad_vars = tensorf.get_optparam_groups(args.lr_init*lr_scale, args.lr_basis*lr_scale)
+            grad_vars = tensorf.get_optparam_groups(args.lr_init*lr_scale, args.lr_basis*lr_scale,iteration)
             optimizer = torch.optim.Adam(grad_vars, betas=(0.9, 0.99))
         
 
