@@ -222,7 +222,7 @@ class TensorBase(torch.nn.Module):
     # def normalize_coord(self, xyz_sampled):
     #     return ((xyz_sampled-self.aabb[0]) * self.invaabbSize ) / 2 # 坐标归一化到(0, 1)
 
-    def get_optparam_groups(self, lr_init_spatial = 0.02, lr_init_network = 0.001):
+    def get_optparam_groups(self, lr_init_spatial = 0.02, lr_init_network = 0.001,iters = 0):
         pass
 
     def get_kwargs(self):

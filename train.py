@@ -138,7 +138,7 @@ def reconstruction(args):
                     pos_pe=args.pos_pe, view_pe=args.view_pe, fea_pe=args.fea_pe, featureC=args.featureC, step_ratio=args.step_ratio, fea2denseAct=args.fea2denseAct)
 
 
-    grad_vars = tensorf.get_optparam_groups(args.lr_init, args.lr_basis)
+    grad_vars = tensorf.get_optparam_groups(args.lr_init, args.lr_basis,0)
     if args.lr_decay_iters > 0:
         lr_factor = args.lr_decay_target_ratio**(1/args.lr_decay_iters)
     else:
@@ -270,7 +270,7 @@ def reconstruction(args):
                 lr_scale = 1 #0.1 ** (iteration / args.n_iters)
             else:
                 lr_scale = args.lr_decay_target_ratio ** (iteration / args.n_iters)
-            grad_vars = tensorf.get_optparam_groups(args.lr_init*lr_scale, args.lr_basis*lr_scale)
+            grad_vars = tensorf.get_optparam_groups(args.lr_init*lr_scale, args.lr_basis*lr_scale,iteration)
             optimizer = torch.optim.Adam(grad_vars, betas=(0.9, 0.99))
         
 
