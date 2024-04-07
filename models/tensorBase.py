@@ -172,7 +172,6 @@ class TensorBase(torch.nn.Module):
         self.shadingMode, self.pos_pe, self.view_pe, self.fea_pe, self.featureC = shadingMode, pos_pe, view_pe, fea_pe, featureC
         self.init_render_func(shadingMode, pos_pe, view_pe, fea_pe, featureC, device)
 
-
     def init_render_func(self, shadingMode, pos_pe, view_pe, fea_pe, featureC, device):
         if shadingMode == 'MLP_PE':
             self.renderModule = MLPRender_PE(self.app_dim, view_pe, pos_pe, featureC).to(device)
@@ -217,10 +216,7 @@ class TensorBase(torch.nn.Module):
         pass
     
     def normalize_coord(self, xyz_sampled):
-        return (xyz_sampled-self.aabb[0]) * self.invaabbSize - 1 # 坐标归一化到(-1,1)
-    
-    # def normalize_coord(self, xyz_sampled):
-    #     return ((xyz_sampled-self.aabb[0]) * self.invaabbSize ) / 2 # 坐标归一化到(0, 1)
+        return (xyz_sampled-self.aabb[0]) * self.invaabbSize - 1
 
     def get_optparam_groups(self, lr_init_spatial = 0.02, lr_init_network = 0.001):
         pass
@@ -400,8 +396,8 @@ class TensorBase(torch.nn.Module):
 
         if alpha_mask.any():
             xyz_sampled = self.normalize_coord(xyz_locs[alpha_mask])
-            sigma_feature,ngp_feature = self.compute_densityfeature(xyz_sampled)
-            validsigma = self.feature2density(ngp_feature)
+            sigma_feature = self.compute_densityfeature(xyz_sampled)
+            validsigma = self.feature2density(sigma_feature)
             sigma[alpha_mask] = validsigma
         
 
@@ -438,9 +434,9 @@ class TensorBase(torch.nn.Module):
 
         if ray_valid.any():
             xyz_sampled = self.normalize_coord(xyz_sampled)
-            sigma_feature,ngp_feature = self.compute_densityfeature(xyz_sampled[ray_valid])
+            sigma_feature = self.compute_densityfeature(xyz_sampled[ray_valid])
 
-            validsigma = self.feature2density(ngp_feature)
+            validsigma = self.feature2density(sigma_feature)
             sigma[ray_valid] = validsigma
 
 

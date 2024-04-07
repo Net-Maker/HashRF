@@ -16,7 +16,7 @@ import sys
 
 
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 renderer = OctreeRender_trilinear_fast
 
@@ -237,7 +237,6 @@ def reconstruction(args):
             PSNRs_test = evaluation(test_dataset,tensorf, args, renderer, f'{logfolder}/imgs_vis/', N_vis=args.N_vis,
                                     prtx=f'{iteration:06d}_', N_samples=nSamples, white_bg = white_bg, ndc_ray=ndc_ray, compute_extra_metrics=False)
             summary_writer.add_scalar('test/psnr', np.mean(PSNRs_test), global_step=iteration)
-            print("test_PSNR:",np.mean(PSNRs_test))
 
 
 
@@ -270,7 +269,7 @@ def reconstruction(args):
                 lr_scale = 1 #0.1 ** (iteration / args.n_iters)
             else:
                 lr_scale = args.lr_decay_target_ratio ** (iteration / args.n_iters)
-            grad_vars = tensorf.get_optparam_groups(args.lr_init*lr_scale, args.lr_basis*lr_scale,iteration)
+            grad_vars = tensorf.get_optparam_groups(args.lr_init*lr_scale, args.lr_basis*lr_scale)
             optimizer = torch.optim.Adam(grad_vars, betas=(0.9, 0.99))
         
 
