@@ -1,0 +1,8 @@
+logs/
+data/
+*.out
+*.png
+*.mp4
+*.pyc
+.history/
+.ipynb_checkpoints/
