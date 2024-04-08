@@ -356,7 +356,7 @@ class MLPRender_Combine_CP(torch.nn.Module): # position(x,y) -> positional encod
     def __init__(self, inChanel, output_channel=16, pospe=6, featureC=64):
         super(MLPRender_Combine_CP, self).__init__()
 
-        self.in_mlpC =  (3*pospe*2+inChanel) #(x,y) + positional encoding + ngp_feature
+        self.in_mlpC =  (3*pospe*2+inChanel) #(x,y,z) + positional encoding + line1 + line2 + line3
         self.pospe = pospe
         self.output = output_channel
         layer1 = torch.nn.Linear(self.in_mlpC, featureC)
@@ -384,11 +384,8 @@ class MLPRender_Combine_CP(torch.nn.Module): # position(x,y) -> positional encod
 class TensorCP(TensorBase):
     def __init__(self, aabb, gridSize, device, **kargs):
         super(TensorCP, self).__init__(aabb, gridSize, device, **kargs)
-        self.extra_mlp = [
-            MLPRender_Combine_CP(3+self.density_n_comp[0]+self.density_n_comp[0],self.density_n_comp[0]).to(device),
-            MLPRender_Combine_CP(3+self.density_n_comp[0]+self.density_n_comp[0],self.density_n_comp[0]).to(device),
-            MLPRender_Combine_CP(3+self.density_n_comp[0]+self.density_n_comp[0],self.density_n_comp[0]).to(device)
-            ]
+        self.extra_mlp = MLPRender_Combine_CP(3+self.density_n_comp[0]*3,self.density_n_comp[0]).to(device)
+           
 
 
     def init_svd_volume(self, res, device):
@@ -414,9 +411,7 @@ class TensorCP(TensorBase):
             grad_vars += [{'params':self.renderModule.parameters(), 'lr':lr_init_network}]
         if iters >= 7000:
             grad_vars += [
-                         {"params":self.extra_mlp[0].parameters(),"lr":0.001},
-                         {"params":self.extra_mlp[1].parameters(),"lr":0.001},
-                         {"params":self.extra_mlp[2].parameters(),"lr":0.001}
+                         {"params":self.extra_mlp.parameters(),"lr":0.001}
                 ]
         return grad_vars
 
@@ -432,6 +427,7 @@ class TensorCP(TensorBase):
                                         align_corners=True).view(-1, *xyz_sampled.shape[:1])
         line_coef_point3 = F.grid_sample(self.density_line[2], coordinate_line[[2]],
                                         align_corners=True).view(-1, *xyz_sampled.shape[:1])
+        # import pdb; pdb.set_trace()
         res1,res2,res3 = self.extra_mlp(xyz_sampled,line_coef_point1.T,line_coef_point2.T,line_coef_point3.T)
 
         line_coef_point1 += res1.T
