@@ -149,9 +149,10 @@ class MLPRender_Combine(torch.nn.Module): # position(x,y) -> positional encoddin
 
         self.in_mlpC =  (3*pospe*2+inChanel) #(x,y) + positional encoding + ngp_feature
         self.pospe = pospe
+        self.output = output_channel
         layer1 = torch.nn.Linear(self.in_mlpC, featureC)
         layer2 = torch.nn.Linear(featureC, featureC)
-        layer3 = torch.nn.Linear(featureC,output_channel)
+        layer3 = torch.nn.Linear(featureC,output_channel * 2)
 
         self.mlp = torch.nn.Sequential(layer1, torch.nn.ReLU(inplace=True), layer2, torch.nn.ReLU(inplace=True), layer3)
         torch.nn.init.constant_(self.mlp[-1].bias, 0)
@@ -162,10 +163,12 @@ class MLPRender_Combine(torch.nn.Module): # position(x,y) -> positional encoddin
             indata += [positional_encoding(pts, self.pospe)]
         mlp_in = torch.cat(indata, dim=-1)
         feature = self.mlp(mlp_in)
+        out1 = feature[:,:self.output]
+        out2 = feature[:,self.output:]
         #feature = F.relu(feature) #使用relu激活，因为我们的任务就是预测出体密度的特征，至于这个特征是否需要负数？ 可能需要实验
         
 
-        return feature
+        return out1,out2
         
         
 
@@ -173,9 +176,9 @@ class TensorVMSplit(TensorBase):
     def __init__(self, aabb, gridSize, device, **kargs):
         super(TensorVMSplit, self).__init__(aabb, gridSize, device, **kargs)
         self.extra_mlp = [
-            MLPRender_Combine(3+self.density_n_comp[0]+16,1).to(device),
-            MLPRender_Combine(3+self.density_n_comp[0]+16,1).to(device),
-            MLPRender_Combine(3+self.density_n_comp[0]+16,1).to(device)
+            MLPRender_Combine(3+self.density_n_comp[0]+16,16).to(device),
+            MLPRender_Combine(3+self.density_n_comp[0]+16,16).to(device),
+            MLPRender_Combine(3+self.density_n_comp[0]+16,16).to(device)
             ]
         
 
@@ -262,9 +265,9 @@ class TensorVMSplit(TensorBase):
             line_coef_point = F.grid_sample(self.density_line[idx_plane], coordinate_line[[idx_plane]],
                                             align_corners=True).view(-1,*xyz_sampled.shape[:1])
             # print(plane_coef_point.shape)
-            result = self.extra_mlp[idx_plane](xyz_sampled,plane_coef_point.T,line_coef_point.T).squeeze()
+            result1,result2 = self.extra_mlp[idx_plane](xyz_sampled,plane_coef_point.T,line_coef_point.T)
             # print(result.shape,sigma_feature.shape)
-            sigma_feature = sigma_feature + torch.sum(plane_coef_point * line_coef_point, dim=0) + result
+            sigma_feature = sigma_feature + torch.sum((plane_coef_point+result1.T) * (line_coef_point + result2.T), dim=0)
             # self.extra_mlp[idx_plane](xyz_sampled,line_coef_point.T,line_coef_point.T)
 
         return sigma_feature
