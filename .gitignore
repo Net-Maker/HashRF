@@ -1,4 +1,4 @@
-logs/
+log/
 data/
 *.out
 *.png
@@ -6,3 +6,6 @@ data/
 *.pyc
 .history/
 .ipynb_checkpoints/
+.idea/
+Dependency/
+
