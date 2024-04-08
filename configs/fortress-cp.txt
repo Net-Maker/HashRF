@@ -1,7 +1,7 @@
 
 dataset_name = llff
 datadir = ./data/nerf_llff_data/fortress
-expname =  tensorf_fortress_VM
+expname =  tensorf_fortress_CP
 basedir = ./log
 
 downsample_train = 4.0

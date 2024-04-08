@@ -1,7 +1,7 @@
 
 dataset_name = nsvf
 datadir = ./data/Synthetic_NSVF/Bike
-expname =  tensorf_Bike_VM
+expname =  tensorf_Bike_CP
 basedir = ./log
 
 n_iters = 30000
@@ -17,9 +17,7 @@ vis_every = 10000
 
 render_test = 1
 
-n_lamb_sigma = [16,16,16]
-n_lamb_sh = [48,48,48]
-model_name = TensorVMSplit
+
 
 shadingMode = MLP_Fea
 fea2denseAct = softplus

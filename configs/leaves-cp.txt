@@ -1,7 +1,7 @@
 
 dataset_name = llff
 datadir = ./data/nerf_llff_data/leaves
-expname =  tensorf_leaves_VM
+expname =  tensorf_leaves_CP
 basedir = ./log
 
 downsample_train = 4.0

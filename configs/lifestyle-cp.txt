@@ -1,7 +1,7 @@
 
 dataset_name = nsvf
 datadir = ./data/Synthetic_NSVF/Lifestyle
-expname =  tensorf_Lifesytle_VM
+expname =  tensorf_Lifesytle_CP
 basedir = ./log
 
 n_iters = 30000

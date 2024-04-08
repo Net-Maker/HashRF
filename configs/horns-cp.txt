@@ -1,7 +1,7 @@
 
 dataset_name = llff
 datadir = ./data/nerf_llff_data/horns
-expname =  tensorf_horns_VM
+expname =  tensorf_horns_CP
 basedir = ./log
 
 downsample_train = 4.0

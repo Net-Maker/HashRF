@@ -1,7 +1,7 @@
 
 dataset_name = nsvf
 datadir = ./data/Synthetic_NSVF/Steamtrain
-expname =  tensorf_Steamtrain_VM
+expname =  tensorf_Steamtrain_CP
 basedir = ./log
 
 n_iters = 30000

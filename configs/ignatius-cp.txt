@@ -1,7 +1,7 @@
 
 dataset_name = tankstemple
 datadir = ./data/TanksAndTemple/Ignatius
-expname = tensorf_ignatius_VM
+expname = tensorf_ignatius_CP
 basedir = ./log
 
 n_iters = 30000

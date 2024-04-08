@@ -1,7 +1,7 @@
 
 dataset_name = nsvf
 datadir = ./data/Synthetic_NSVF/Toad
-expname =  tensorf_Toad_VM
+expname =  tensorf_Toad_CP
 basedir = ./log
 
 n_iters = 30000

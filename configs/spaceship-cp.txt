@@ -1,7 +1,7 @@
 
 dataset_name = nsvf
 datadir = ./data/Synthetic_NSVF/Spaceship
-expname =  tensorf_Spaceship_VM
+expname =  tensorf_Spaceship_CP
 basedir = ./log
 
 n_iters = 30000

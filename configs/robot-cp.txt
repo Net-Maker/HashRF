@@ -1,7 +1,7 @@
 
 dataset_name = nsvf
 datadir = ./data/Synthetic_NSVF/Robot
-expname =  tensorf_Robot_VM
+expname =  tensorf_Robot_CP
 basedir = ./log
 
 n_iters = 30000

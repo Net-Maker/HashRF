@@ -2,7 +2,7 @@
 
 dataset_name = tankstemple
 datadir = ./data/TanksAndTemple/Caterpillar
-expname =  tensorf_caterpillar_VM
+expname =  tensorf_caterpillar_CP
 basedir = ./log
 
 n_iters = 30000

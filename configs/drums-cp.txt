@@ -1,7 +1,7 @@
 
 dataset_name = blender
 datadir = ./data/nerf_synthetic/drums
-expname =  tensorf_drums_VM
+expname =  tensorf_drums_CP
 basedir = ./log
 
 n_iters = 30000
@@ -17,9 +17,6 @@ vis_every = 5000
 
 render_test = 1
 
-n_lamb_sigma = [16,16,16]
-n_lamb_sh = [48,48,48]
-model_name = TensorVMSplit
 
 
 shadingMode = MLP_Fea

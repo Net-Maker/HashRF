@@ -352,10 +352,43 @@ class TensorVMSplit(TensorBase):
         self.aabb = new_aabb
         self.update_stepSize((newSize[0], newSize[1], newSize[2]))
 
+class MLPRender_Combine_CP(torch.nn.Module): # position(x,y) -> positional encodding + ngp_result -> final_feature
+    def __init__(self, inChanel, output_channel=16, pospe=6, featureC=64):
+        super(MLPRender_Combine_CP, self).__init__()
+
+        self.in_mlpC =  (3*pospe*2+inChanel) #(x,y) + positional encoding + ngp_feature
+        self.pospe = pospe
+        self.output = output_channel
+        layer1 = torch.nn.Linear(self.in_mlpC, featureC)
+        layer2 = torch.nn.Linear(featureC, featureC)
+        layer3 = torch.nn.Linear(featureC,output_channel*3)
+
+        self.mlp = torch.nn.Sequential(layer1, torch.nn.ReLU(inplace=True), layer2, torch.nn.ReLU(inplace=True), layer3)
+        torch.nn.init.constant_(self.mlp[-1].bias, 0)
+
+    def forward(self, pts, line1, line2, line3):
+        indata = [line1,line2,line3,pts]
+        if self.pospe > 0:
+            indata += [positional_encoding(pts, self.pospe)]
+        mlp_in = torch.cat(indata, dim=-1)
+        feature = self.mlp(mlp_in)
+        #feature = F.relu(feature) #使用relu激活，因为我们的任务就是预测出体密度的特征，至于这个特征是否需要负数？ 可能需要实验
+        out1 = feature[:,:self.output]
+        out2 = feature[:,self.output:self.output*2]
+        out3 = feature[:,self.output*2:self.output*3]
+        
+
+        return out1,out2,out3
+
 
 class TensorCP(TensorBase):
     def __init__(self, aabb, gridSize, device, **kargs):
         super(TensorCP, self).__init__(aabb, gridSize, device, **kargs)
+        self.extra_mlp = [
+            MLPRender_Combine_CP(3+self.density_n_comp[0]+self.density_n_comp[0],self.density_n_comp[0]).to(device),
+            MLPRender_Combine_CP(3+self.density_n_comp[0]+self.density_n_comp[0],self.density_n_comp[0]).to(device),
+            MLPRender_Combine_CP(3+self.density_n_comp[0]+self.density_n_comp[0],self.density_n_comp[0]).to(device)
+            ]
 
 
     def init_svd_volume(self, res, device):
@@ -373,12 +406,18 @@ class TensorCP(TensorBase):
         return torch.nn.ParameterList(line_coef).to(device)
 
     
-    def get_optparam_groups(self, lr_init_spatialxyz = 0.02, lr_init_network = 0.001):
+    def get_optparam_groups(self, lr_init_spatialxyz = 0.02, lr_init_network = 0.001,iters=0):
         grad_vars = [{'params': self.density_line, 'lr': lr_init_spatialxyz},
                      {'params': self.app_line, 'lr': lr_init_spatialxyz},
                      {'params': self.basis_mat.parameters(), 'lr':lr_init_network}]
         if isinstance(self.renderModule, torch.nn.Module):
             grad_vars += [{'params':self.renderModule.parameters(), 'lr':lr_init_network}]
+        if iters >= 7000:
+            grad_vars += [
+                         {"params":self.extra_mlp[0].parameters(),"lr":0.001},
+                         {"params":self.extra_mlp[1].parameters(),"lr":0.001},
+                         {"params":self.extra_mlp[2].parameters(),"lr":0.001}
+                ]
         return grad_vars
 
     def compute_densityfeature(self, xyz_sampled):
@@ -387,12 +426,21 @@ class TensorCP(TensorBase):
         coordinate_line = torch.stack((torch.zeros_like(coordinate_line), coordinate_line), dim=-1).detach().view(3, -1, 1, 2)
 
 
-        line_coef_point = F.grid_sample(self.density_line[0], coordinate_line[[0]],
+        line_coef_point1 = F.grid_sample(self.density_line[0], coordinate_line[[0]],
                                             align_corners=True).view(-1, *xyz_sampled.shape[:1])
-        line_coef_point = line_coef_point * F.grid_sample(self.density_line[1], coordinate_line[[1]],
+        line_coef_point2 = F.grid_sample(self.density_line[1], coordinate_line[[1]],
                                         align_corners=True).view(-1, *xyz_sampled.shape[:1])
-        line_coef_point = line_coef_point * F.grid_sample(self.density_line[2], coordinate_line[[2]],
+        line_coef_point3 = F.grid_sample(self.density_line[2], coordinate_line[[2]],
                                         align_corners=True).view(-1, *xyz_sampled.shape[:1])
+        res1,res2,res3 = self.extra_mlp(xyz_sampled,line_coef_point1.T,line_coef_point2.T,line_coef_point3.T)
+
+        line_coef_point1 += res1.T
+        line_coef_point2 += res2.T
+        line_coef_point3 += res3.T
+
+        line_coef_point = line_coef_point1 * line_coef_point2 * line_coef_point3
+
+
         sigma_feature = torch.sum(line_coef_point, dim=0)
         
         
