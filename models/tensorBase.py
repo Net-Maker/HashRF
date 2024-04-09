@@ -212,7 +212,7 @@ class TensorBase(torch.nn.Module):
     def compute_densityfeature(self, xyz_sampled):
         pass
     
-    def compute_appfeature(self, xyz_sampled):
+    def compute_appfeature(self, xyz_sampled, view):
         pass
     
     def normalize_coord(self, xyz_sampled):
@@ -445,7 +445,7 @@ class TensorBase(torch.nn.Module):
         app_mask = weight > self.rayMarch_weight_thres
 
         if app_mask.any():
-            app_features = self.compute_appfeature(xyz_sampled[app_mask])
+            app_features = self.compute_appfeature(xyz_sampled[app_mask], viewdirs[app_mask])
             valid_rgbs = self.renderModule(xyz_sampled[app_mask], viewdirs[app_mask], app_features)
             rgb[app_mask] = valid_rgbs
 
