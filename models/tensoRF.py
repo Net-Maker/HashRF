@@ -353,7 +353,7 @@ class TensorVMSplit(TensorBase):
         self.update_stepSize((newSize[0], newSize[1], newSize[2]))
 
 class MLPRender_Combine_CP(torch.nn.Module): # position(x,y) -> positional encodding + ngp_result -> final_feature
-    def __init__(self, inChanel, output_channel=16, pospe=6, featureC=64):
+    def __init__(self, inChanel, output_channel=16, pospe=6, featureC=128):
         super(MLPRender_Combine_CP, self).__init__()
 
         self.in_mlpC =  (3*pospe*2+inChanel) #(x,y,z) + positional encoding + line1 + line2 + line3
@@ -382,7 +382,7 @@ class MLPRender_Combine_CP(torch.nn.Module): # position(x,y) -> positional encod
         return out1,out2,out3
 
 class MLPRender_Combine_CP_rgb(torch.nn.Module): # position(x,y) -> positional encodding + ngp_result -> final_feature
-    def __init__(self, inChanel, output_channel=16, pospe=6, viewpe=6, featureC=64):
+    def __init__(self, inChanel, output_channel=16, pospe=6, viewpe=6, featureC=128):
         super(MLPRender_Combine_CP_rgb, self).__init__()
 
         self.in_mlpC =  (3*pospe*2+inChanel+2*viewpe*3+3) #(x,y,z) + view + positional encoding + line1 + line2 + line3
@@ -445,11 +445,11 @@ class TensorCP(TensorBase):
         if iters >= 7000:
             grad_vars += [
                          {"params":self.extra_mlp.parameters(),"lr":0.001},
-                         {"params":self.extra_mlp_rgb.parameters(),"lr":0.001}
+                        #  {"params":self.extra_mlp_rgb.parameters(),"lr":0.001}
                 ]
         return grad_vars
 
-    def compute_densityfeature(self, xyz_sampled):
+    def compute_densityfeature(self, xyz_sampled, iters):
 
         coordinate_line = torch.stack((xyz_sampled[..., self.vecMode[0]], xyz_sampled[..., self.vecMode[1]], xyz_sampled[..., self.vecMode[2]]))
         coordinate_line = torch.stack((torch.zeros_like(coordinate_line), coordinate_line), dim=-1).detach().view(3, -1, 1, 2)
@@ -462,11 +462,12 @@ class TensorCP(TensorBase):
         line_coef_point3 = F.grid_sample(self.density_line[2], coordinate_line[[2]],
                                         align_corners=True).view(-1, *xyz_sampled.shape[:1])
         # import pdb; pdb.set_trace()
-        res1,res2,res3 = self.extra_mlp(xyz_sampled,line_coef_point1.T,line_coef_point2.T,line_coef_point3.T)
+        if iters > 7000:
+            res1,res2,res3 = self.extra_mlp(xyz_sampled,line_coef_point1.T,line_coef_point2.T,line_coef_point3.T)
 
-        line_coef_point1 += res1.T
-        line_coef_point2 += res2.T
-        line_coef_point3 += res3.T
+            line_coef_point1 += 0.1 * res1.T
+            line_coef_point2 += 0.1 * res2.T
+            line_coef_point3 += 0.1 * res3.T
 
         line_coef_point = line_coef_point1 * line_coef_point2 * line_coef_point3
 
@@ -490,11 +491,11 @@ class TensorCP(TensorBase):
         line_coef_point3 = F.grid_sample(self.app_line[2], coordinate_line[[2]],
                                                           align_corners=True).view(-1, *xyz_sampled.shape[:1])
         
-        res1,res2,res3 = self.extra_mlp_rgb(xyz_sampled,viewdirs,line_coef_point1.T,line_coef_point2.T,line_coef_point3.T)
+        # res1,res2,res3 = self.extra_mlp_rgb(xyz_sampled,viewdirs,line_coef_point1.T,line_coef_point2.T,line_coef_point3.T)
 
-        line_coef_point1 += res1.T
-        line_coef_point2 += res2.T
-        line_coef_point3 += res3.T
+        # line_coef_point1 += res1.T
+        # line_coef_point2 += res2.T
+        # line_coef_point3 += res3.T
 
 
 

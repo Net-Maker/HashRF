@@ -209,7 +209,7 @@ class TensorBase(torch.nn.Module):
     def compute_features(self, xyz_sampled):
         pass
     
-    def compute_densityfeature(self, xyz_sampled):
+    def compute_densityfeature(self, xyz_sampled,iters):
         pass
     
     def compute_appfeature(self, xyz_sampled, view):
@@ -278,7 +278,7 @@ class TensorBase(torch.nn.Module):
         N_samples = N_samples if N_samples>0 else self.nSamples
         stepsize = self.stepSize
         near, far = self.near_far
-        vec = torch.where(rays_d==0, torch.full_like(rays_d, 1e-6), rays_d)
+        vec = torch.where(rays_d==0, torch.full_like(rays_d, 1e-6), rays_d).to(self.device)
         rate_a = (self.aabb[1] - rays_o) / vec
         rate_b = (self.aabb[0] - rays_o) / vec
         t_min = torch.minimum(rate_a, rate_b).amax(-1).clamp(min=near, max=far)
@@ -300,7 +300,7 @@ class TensorBase(torch.nn.Module):
         pass
 
     @torch.no_grad()
-    def getDenseAlpha(self,gridSize=None):
+    def getDenseAlpha(self,gridSize=None,iters=0):
         gridSize = self.gridSize if gridSize is None else gridSize
 
         samples = torch.stack(torch.meshgrid(
@@ -314,13 +314,13 @@ class TensorBase(torch.nn.Module):
         # print(self.stepSize, self.distance_scale*self.aabbDiag)
         alpha = torch.zeros_like(dense_xyz[...,0])
         for i in range(gridSize[0]):
-            alpha[i] = self.compute_alpha(dense_xyz[i].view(-1,3), self.stepSize).view((gridSize[1], gridSize[2]))
+            alpha[i] = self.compute_alpha(dense_xyz[i].view(-1,3), self.stepSize).view((gridSize[1], gridSize[2]),iters)
         return alpha, dense_xyz
 
     @torch.no_grad()
-    def updateAlphaMask(self, gridSize=(200,200,200)):
+    def updateAlphaMask(self, gridSize=(200,200,200), iters=0):
 
-        alpha, dense_xyz = self.getDenseAlpha(gridSize)
+        alpha, dense_xyz = self.getDenseAlpha(gridSize,iters)
         dense_xyz = dense_xyz.transpose(0,2).contiguous()
         alpha = alpha.clamp(0,1).transpose(0,2).contiguous()[None,None]
         total_voxels = gridSize[0] * gridSize[1] * gridSize[2]
@@ -383,7 +383,7 @@ class TensorBase(torch.nn.Module):
             return F.relu(density_features)
 
 
-    def compute_alpha(self, xyz_locs, length=1):
+    def compute_alpha(self, xyz_locs, length=1,iters=0):
 
         if self.alphaMask is not None:
             alphas = self.alphaMask.sample_alpha(xyz_locs)
@@ -396,7 +396,7 @@ class TensorBase(torch.nn.Module):
 
         if alpha_mask.any():
             xyz_sampled = self.normalize_coord(xyz_locs[alpha_mask])
-            sigma_feature = self.compute_densityfeature(xyz_sampled)
+            sigma_feature = self.compute_densityfeature(xyz_sampled,iters) # compute alpha 时不需要mlp
             validsigma = self.feature2density(sigma_feature)
             sigma[alpha_mask] = validsigma
         
@@ -406,7 +406,7 @@ class TensorBase(torch.nn.Module):
         return alpha
 
 
-    def forward(self, rays_chunk, white_bg=True, is_train=False, ndc_ray=False, N_samples=-1):
+    def forward(self, rays_chunk, white_bg=True, is_train=False, ndc_ray=False, N_samples=-1,iters=0):
 
         # sample points
         viewdirs = rays_chunk[:, 3:6]
@@ -434,7 +434,7 @@ class TensorBase(torch.nn.Module):
 
         if ray_valid.any():
             xyz_sampled = self.normalize_coord(xyz_sampled)
-            sigma_feature = self.compute_densityfeature(xyz_sampled[ray_valid])
+            sigma_feature = self.compute_densityfeature(xyz_sampled[ray_valid],iters)
 
             validsigma = self.feature2density(sigma_feature)
             sigma[ray_valid] = validsigma
