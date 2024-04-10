@@ -363,7 +363,7 @@ class MLPRender_Combine_CP(torch.nn.Module): # position(x,y) -> positional encod
         layer2 = torch.nn.Linear(featureC, featureC)
         layer3 = torch.nn.Linear(featureC,output_channel*3)
 
-        self.mlp = torch.nn.Sequential(layer1, torch.nn.ReLU(inplace=True), layer2, torch.nn.ReLU(inplace=True), layer3)
+        self.mlp = torch.nn.Sequential(layer1, torch.nn.ReLU(inplace=True),layer2, torch.nn.ReLU(inplace=True), layer3)
         torch.nn.init.constant_(self.mlp[-1].bias, 0)
 
     def forward(self, pts, line1, line2, line3):
@@ -465,9 +465,9 @@ class TensorCP(TensorBase):
         if iters > 7000:
             res1,res2,res3 = self.extra_mlp(xyz_sampled,line_coef_point1.T,line_coef_point2.T,line_coef_point3.T)
 
-            line_coef_point1 += 0.1 * res1.T
-            line_coef_point2 += 0.1 * res2.T
-            line_coef_point3 += 0.1 * res3.T
+            line_coef_point1 += 0.0001 * res1.T
+            line_coef_point2 += 0.0001 * res2.T
+            line_coef_point3 += 0.0001 * res3.T
 
         line_coef_point = line_coef_point1 * line_coef_point2 * line_coef_point3
 
