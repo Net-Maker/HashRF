@@ -144,7 +144,7 @@ class TensorVM(TensorBase):
 
         
 class MLPRender_Combine(torch.nn.Module): # position(x,y) -> positional encodding + ngp_result -> final_feature
-    def __init__(self, inChanel, output_channel=16, pospe=6, featureC=64):
+    def __init__(self, inChanel, output_channel=16, pospe=6, featureC=256):
         super(MLPRender_Combine, self).__init__()
 
         self.in_mlpC =  (3*pospe*2+inChanel) #(x,y) + positional encoding + ngp_feature
@@ -176,9 +176,9 @@ class TensorVMSplit(TensorBase):
     def __init__(self, aabb, gridSize, device, **kargs):
         super(TensorVMSplit, self).__init__(aabb, gridSize, device, **kargs)
         self.extra_mlp = [
-            MLPRender_Combine(3+self.density_n_comp[0]+16,16).to(device),
-            MLPRender_Combine(3+self.density_n_comp[0]+16,16).to(device),
-            MLPRender_Combine(3+self.density_n_comp[0]+16,16).to(device)
+            MLPRender_Combine(3+self.density_n_comp[0]+self.density_n_comp[0],self.density_n_comp[0]).to(device),
+            MLPRender_Combine(3+self.density_n_comp[1]+self.density_n_comp[1],self.density_n_comp[1]).to(device),
+            MLPRender_Combine(3+self.density_n_comp[2]+self.density_n_comp[2],self.density_n_comp[2]).to(device)
             ]
         
 
@@ -265,6 +265,8 @@ class TensorVMSplit(TensorBase):
             line_coef_point = F.grid_sample(self.density_line[idx_plane], coordinate_line[[idx_plane]],
                                             align_corners=True).view(-1,*xyz_sampled.shape[:1])
             # print(plane_coef_point.shape)
+            # print(line_coef_point.shape)
+            # print(idx_plane)
             result1,result2 = self.extra_mlp[idx_plane](xyz_sampled,plane_coef_point.T,line_coef_point.T)
             # print(result.shape,sigma_feature.shape)
             sigma_feature = sigma_feature + torch.sum((plane_coef_point+result1.T) * (line_coef_point + result2.T), dim=0)

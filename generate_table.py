@@ -6,26 +6,35 @@ from pandas.plotting import table
 # 定义存放实验数据的根目录
 log_dir = 'log'
 
+nsvf = ["Bike","Lifesytle","Palace","Toad","Spaceship", "Steamtrain",  "Wineholder", "Robot"]
+synthetic = ["chair", "drums", "ficus", "hotdog", "lego", "materials", "mic", "ship"]
+tanks = ["barn", "caterpillar", "family", "ignatius", "truck"]
+llff = ["fern", "flower" ,"fortress", "horns", "leaves", "orchids", "room", "trex"]
+
 # 初始化一个空的列表来存放所有实验数据
 data = []
 
-# 遍历log目录下的所有实验文件夹
 for experiment in os.listdir(log_dir):
-    # 构建means.txt文件的完整路径
-    means_file_path = os.path.join(log_dir, experiment, 'imgs_test_all', 'mean.txt')
-    
-    # 检查means.txt文件是否存在
-    if os.path.exists(means_file_path):
-        # 读取means.txt文件的内容
-        with open(means_file_path, 'r') as file:
-            lines = file.readlines()
-            data.append([experiment] + [float(line.strip()) for line in lines])
+    # 只处理实验文件夹名包含"CP"的情况
+    for item in synthetic:
+        if item == experiment[8:-3]:
+            # print(item)
+        # 构建means.txt文件的完整路径
+            means_file_path = os.path.join(log_dir, experiment, 'imgs_test_all', 'mean.txt')
+        
+        # 检查means.txt文件是否存在
+            if os.path.exists(means_file_path):
+            # 读取means.txt文件的内容
+                with open(means_file_path, 'r') as file:
+                    lines = file.readlines()
+                    data.append([experiment] + [float(line.strip()) for line in lines])
+            continue
 
 # 将数据转换为DataFrame
 df = pd.DataFrame(data, columns=['Experiment', 'PSNR', 'SSIM', 'LPIPSV', 'LPIPSA'])
 
 # 计算PSNR、SSIM、LPIPSV和LPIPSA列的平均值
-mean_values = df[['PSNR', 'SSIM', 'LPIPSV', 'LPIPSA']].mean()
+mean_values = df[['PSNR', 'SSIM', 'LPIPSA', 'LPIPSV']].mean()
 
 # 将平均值添加为DataFrame的新行
 df.loc['Average'] = ['Average'] + mean_values.tolist()
