@@ -2,7 +2,7 @@ import configargparse
 
 def config_parser(cmd=None):
     parser = configargparse.ArgumentParser()
-    parser.add_argument('--config', is_config_file=True,
+    parser.add_argument('--config', is_config_file=True,default='./configs/lego.txt',
                         help='config file path')
     parser.add_argument("--expname", type=str,
                         help='experiment name')
