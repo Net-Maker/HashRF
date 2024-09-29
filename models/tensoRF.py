@@ -229,7 +229,7 @@ class MLPRender_PE_Res_Tiny(torch.nn.Module): # position(x,y) -> positional enco
     def __init__(self, inChanel, output_channel=16, pospe=6, featureC=64):
         super(MLPRender_PE_Res_Tiny, self).__init__()
 
-        self.in_mlpC =  (2*pospe*2+inChanel) #(x,y) + positional encoding + ngp_feature
+        self.in_mlpC =  (2*pospe*2+inChanel) + 16#(x,y) + positional encoding + ngp_feature
         self.pospe = pospe
         layer1 = torch.nn.Linear(self.in_mlpC, featureC)
         layer3 = torch.nn.Linear(featureC,output_channel)
@@ -237,8 +237,8 @@ class MLPRender_PE_Res_Tiny(torch.nn.Module): # position(x,y) -> positional enco
         self.mlp = torch.nn.Sequential(layer1, layer3)
         torch.nn.init.constant_(self.mlp[-1].bias, 0)
 
-    def forward(self, pts, ngp_feature):
-        indata = [pts,ngp_feature]
+    def forward(self, pts, ngp_feature, line_feature):
+        indata = [pts,ngp_feature,line_feature]
         if self.pospe > 0:
             indata += [positional_encoding(pts, self.pospe)]
         mlp_in = torch.cat(indata, dim=-1)
@@ -289,7 +289,7 @@ class TensorVMSplit(TensorBase):
         self.feature_num2 = self.ngp_density_encoding_config2["n_levels"] * self.ngp_density_encoding_config2["n_features_per_level"]
         self.feature_num3 = self.ngp_density_encoding_config3["n_levels"] * self.ngp_density_encoding_config3["n_features_per_level"]
         #self.density_network = [MLPRender(self.feature_num1,16).to(device),MLPRender(self.feature_num2,16).to(device),MLPRender(self.feature_num3,16).to(device)]
-        self.extra_mlp = [MLPRender_PE_Res_Tiny(2+self.feature_num1,16).to(device),MLPRender_PE_Res_Tiny(2+self.feature_num1,16).to(device),MLPRender_PE_Res_Tiny(2+self.feature_num1,16).to(device)]
+        self.extra_mlp = [MLPRender_PE_Res_Tiny(2+self.feature_num1,1).to(device),MLPRender_PE_Res_Tiny(2+self.feature_num1,1).to(device),MLPRender_PE_Res_Tiny(2+self.feature_num1,1).to(device)]
         #_,self.ngp_line = self.init_one_svd([feature_num,feature_num,feature_num], self.gridSize, 0.1, device)
         super(TensorVMSplit, self).__init__(aabb, gridSize, device, **kargs)
         
@@ -330,12 +330,12 @@ class TensorVMSplit(TensorBase):
                     ]
         if isinstance(self.renderModule, torch.nn.Module):
             grad_vars += [{'params':self.renderModule.parameters(), 'lr':lr_init_network}]
-        # if iters >= 7000:
-        #     grad_vars += [
-        #                  {"params":self.extra_mlp[0].parameters(),"lr":0.001},
-        #                  {"params":self.extra_mlp[1].parameters(),"lr":0.001},
-        #                  {"params":self.extra_mlp[2].parameters(),"lr":0.001}
-        #         ]
+        if iters >= 4000:
+            grad_vars += [
+                         {"params":self.extra_mlp[0].parameters(),"lr":0.001},
+                         {"params":self.extra_mlp[1].parameters(),"lr":0.001},
+                         {"params":self.extra_mlp[2].parameters(),"lr":0.001}
+                ]
         return grad_vars
 
 
@@ -398,7 +398,7 @@ class TensorVMSplit(TensorBase):
             # ngp_out = self.extra_mlp[idx_plane](normed_coordinate,ngp_out)
             #Each plane needs a unique hashtable to store its feature!!!
             #print(ngp_out.shape,ngp_line_point.shape)
-            ngp_feature = ngp_feature + torch.sum(ngp_out.T * ngp_line_point,dim=0)
+            ngp_feature = ngp_feature + torch.sum(ngp_out.T * ngp_line_point,dim=0) + self.extra_mlp[idx_plane](normed_coordinate,ngp_out,ngp_line_point.T).T
             '''
             can we just use the concat way to combine the feature and decode it by a MLP?
             the MLP parameters is tiny,but the performance can be much better!

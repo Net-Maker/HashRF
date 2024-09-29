@@ -6,27 +6,42 @@ from pandas.plotting import table
 # 定义存放实验数据的根目录
 log_dir = 'log'
 
+nsvf = ["Bike","Lifesytle","Palace","Toad","Spaceship", "Steamtrain",  "Wineholder", "Robot"]
+synthetic = ["chair", "drums", "ficus", "hotdog", "lego", "materials", "mic", "ship"]
+tanks = ["barn", "caterpillar", "family", "ignatius", "truck"]
+llff = ["fern", "flower" ,"fortress", "horns", "leaves", "orchids", "room", "trex"]
+
 # 初始化一个空的列表来存放所有实验数据
 data = []
 
-# 遍历log目录下的所有实验文件夹
 for experiment in os.listdir(log_dir):
-    # 构建means.txt文件的完整路径
-    means_file_path = os.path.join(log_dir, experiment, 'imgs_test_all', 'mean.txt')
-    
-    # 检查means.txt文件是否存在
-    if os.path.exists(means_file_path):
-        # 读取means.txt文件的内容
-        with open(means_file_path, 'r') as file:
-            lines = file.readlines()
-            # 假设每个文件中恰好有四行数据，对应PSNR、SSIM、lpipsv、lpipsa
-            data.append([experiment] + [float(line.strip()) for line in lines])
+    # 只处理实验文件夹名包含"CP"的情况
+    for item in synthetic:
+        if item == experiment[8:-3]:
+            # print(item)
+        # 构建means.txt文件的完整路径
+            means_file_path = os.path.join(log_dir, experiment, 'imgs_test_all', 'mean.txt')
+        
+        # 检查means.txt文件是否存在
+            if os.path.exists(means_file_path):
+            # 读取means.txt文件的内容
+                with open(means_file_path, 'r') as file:
+                    lines = file.readlines()
+                    data.append([experiment] + [float(line.strip()) for line in lines])
+            continue
 
 # 将数据转换为DataFrame
 df = pd.DataFrame(data, columns=['Experiment', 'PSNR', 'SSIM', 'LPIPSV', 'LPIPSA'])
 
+# 计算PSNR、SSIM、LPIPSV和LPIPSA列的平均值
+mean_values = df[['PSNR', 'SSIM', 'LPIPSA', 'LPIPSV']].mean()
+
+# 将平均值添加为DataFrame的新行
+df.loc['Average'] = ['Average'] + mean_values.tolist()
+
 # 确保DataFrame按某个列排序，这里假设按照'Experiment'列排序
-df = df.sort_values(by='Experiment')
+# 注意：当添加平均值行后可能不需要再次排序
+# df = df.sort_values(by='Experiment')
 
 # 创建一个绘图窗口
 fig, ax = plt.subplots(figsize=(12, len(df) * 0.3)) # 窗口大小可能需要根据实际数据量调整
@@ -45,6 +60,3 @@ if not os.path.exists(save_dir):
 save_path = os.path.join(save_dir, 'experiment_metrics_table.png')
 plt.savefig(save_path, dpi=300)
 print(f"表格已保存至：{save_path}")
-
-# 如果不需要在脚本运行后显示图表，可以注释掉下一行
-# plt.show()

@@ -79,7 +79,7 @@ def config_parser(cmd=None):
                         help='number of pe for view')
     parser.add_argument("--fea_pe", type=int, default=6,
                         help='number of pe for features')
-    parser.add_argument("--featureC", type=int, default=128,
+    parser.add_argument("--featureC", type=int, default=256,
                         help='hidden feature channel in MLP')
     
 
